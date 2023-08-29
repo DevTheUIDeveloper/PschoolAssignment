@@ -1,0 +1,85 @@
+﻿@page "/parents"
+@using Pschool.Model;
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject Pschool.Service.ParentService parentService
+
+<h3>Parents</h3>
+
+<div class="mb-3">
+    <a href="/parents/add" class="btn btn-primary">Add Parent</a>
+</div>
+<table class="table">
+    <thead>
+        <tr>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Email</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var parent in pagedParents)
+        {
+            <tr>
+                <td>@parent.FirstName</td>
+                <td>@parent.LastName</td>
+                <td>@parent.Email</td>
+                <td>
+                    <button @onclick="() => ViewParent(parent.Id)" class="btn btn-primary btn-sm">View</button>
+                    <button @onclick="() => EditParent(parent.Id)" class="btn btn-secondary btn-sm">Edit</button>
+                    <button @onclick="() => DeleteParent(parent.Id)" class="btn btn-danger btn-sm">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<Pagination PageIndex="currentPageIndex" PageSize="pageSize" TotalItemCount="totalParents" OnPageIndexChanged="LoadParents" />
+
+@code {
+    private List<ParentModel> parents = new List<ParentModel>();
+    private List<ParentModel> pagedParents = new List<ParentModel>();
+    private int currentPageIndex = 0;
+    private int pageSize = 10;
+    private int totalParents = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadParents(currentPageIndex);
+    }
+
+    private async Task LoadParents(int pageIndex)
+    {
+        var response = await parentService.GetParents();
+        parents = response;
+        totalParents = response.Count;
+        currentPageIndex = pageIndex;
+        UpdatePagedParents();
+    }
+
+    private void UpdatePagedParents()
+    {
+        pagedParents = parents.Skip(currentPageIndex * pageSize).Take(pageSize).ToList();
+    }
+
+    private void ViewParent(int parentId)
+    {
+        NavigationManager.NavigateTo($"/parents/view/{parentId}");
+    }
+
+    private void EditParent(int parentId)
+    {
+        NavigationManager.NavigateTo($"/parents/edit/{parentId}");
+    }
+
+    private async Task DeleteParent(int parentId)
+    {
+        var confirmDelete = await JSRuntime.InvokeAsync<bool>("confirm", new object[] { "Are you sure you want to delete this parent?" });
+        if (confirmDelete)
+        {
+            await parentService.DeleteParent(parentId);
+            await LoadParents(currentPageIndex);
+        }
+    }
+}

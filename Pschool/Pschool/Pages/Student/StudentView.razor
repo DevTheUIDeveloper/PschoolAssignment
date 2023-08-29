@@ -1,0 +1,35 @@
+﻿@page "/students/view/{studentId:int}"
+
+@using Pschool.Model
+@inject Pschool.Service.StudentService studentService
+@inject NavigationManager NavigationManager
+
+<h3>View Student</h3>
+
+<div>
+    <p><strong>First Name:</strong> @student.FirstName</p>
+    <p><strong>Last Name:</strong> @student.LastName</p>
+    <p><strong>Age:</strong> @student.Age</p>
+    <p><strong>Parent:</strong> @string.Concat(student.Parent.FirstName," ", student.Parent.LastName)</p>
+</div>
+
+<div class="mt-3">
+    <button @onclick="GoBack" class="btn btn-primary">Back</button>
+</div>
+
+@code {
+    private StudentModel student = new StudentModel();
+
+    [Parameter]
+    public int StudentId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        student = await studentService.GetStudentById(StudentId);
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/students");
+    }
+}

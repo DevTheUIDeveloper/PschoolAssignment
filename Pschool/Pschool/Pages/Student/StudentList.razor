@@ -1,0 +1,123 @@
+﻿@page "/students"
+@using Pschool.Model
+@inject NavigationManager NavigationManager
+@inject Pschool.Service.StudentService studentService
+@inject Pschool.Service.ParentService parentService
+@inject IJSRuntime JSRunTime
+
+<h3>Students</h3>
+
+<div class="mb-3">
+    <div class="row">
+        <div class="col-md-6">        
+            <a href="/students/add" class="btn btn-primary">Add Student</a>
+        </div>
+        <div class="col-md-6 row">
+            <div class="col-md-3">
+                <label for="parentFilter" class="form-label-center">Filter by Parent:</label>
+            </div>
+            <div class="col-md-9">
+                <select id="parentFilter" class="form-control" @onchange="LoadStudentByParent">
+                    <option value="">All Parents</option>
+                    @foreach (var parent in parents)
+                    {
+                        <option value="@parent.Id">@string.Concat(parent.FirstName," ", parent.LastName)</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Age</th>
+            <th>Parent</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var student in pagedStudents)
+        {
+            <tr>
+                <td>@student.FirstName</td>
+                <td>@student.LastName</td>
+                <td>@student.Age</td>
+                <td>@string.Concat(student.Parent.FirstName," ", student.Parent.LastName)</td>
+                <td>
+                    <button @onclick="() => ViewStudent(student.Id)" class="btn btn-primary btn-sm">View</button>
+                    <button @onclick="() => EditStudent(student.Id)" class="btn btn-secondary btn-sm">Edit</button>
+                    <button @onclick="() => DeleteStudent(student.Id)" class="btn btn-danger btn-sm">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<Pagination PageIndex="currentPageIndex" PageSize="pageSize" TotalItemCount="totalStudents" OnPageIndexChanged="LoadStudents" />
+
+@code {
+    private List<StudentModel> students = new List<StudentModel>();
+    private List<StudentModel> pagedStudents = new List<StudentModel>();
+    private int currentPageIndex = 0;
+    private int pageSize = 10;
+    private int totalStudents = 0;
+    private List<ParentModel> parents = new List<ParentModel>();
+    private int selectedParentId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStudents(currentPageIndex);
+        parents = await parentService.GetParents();
+    }
+
+    private async Task LoadStudents(int pageIndex)
+    {
+        var response = await studentService.GetStudents(selectedParentId);
+        students = response;
+        totalStudents = response.Count;
+        currentPageIndex = pageIndex;
+        UpdatePagedStudents();
+    }
+
+    private async Task LoadStudentByParent(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int parentId))
+        {
+            selectedParentId = parentId;
+            await LoadStudents(currentPageIndex);
+        } else
+        {
+            selectedParentId = 0;
+            await LoadStudents(currentPageIndex);
+        }
+    }
+
+    private void UpdatePagedStudents()
+    {
+        pagedStudents = students.Skip(currentPageIndex * pageSize).Take(pageSize).ToList();
+    }
+
+    private void ViewStudent(int studentId)
+    {
+        NavigationManager.NavigateTo($"/students/view/{studentId}");
+    }
+
+    private void EditStudent(int studentId)
+    {
+        NavigationManager.NavigateTo($"/students/edit/{studentId}");
+    }
+
+    private async Task DeleteStudent(int studentId)
+    {
+        var confirmDelete = await JSRunTime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this student?");
+        if (confirmDelete)
+        {
+            await studentService.DeleteStudent(studentId);
+            await LoadStudents(currentPageIndex);
+        }
+    }
+}
